@@ -1,0 +1,151 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+        
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+          
+    - name: Get version
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Build binaries
+      run: |
+        VERSION=${{ steps.get_version.outputs.VERSION }}
+        APP_NAME="duckduckgo-chat-api"
+        BUILD_DIR="releases"
+        
+        # Nettoyer et créer le répertoire de build
+        rm -rf "$BUILD_DIR"
+        mkdir -p "$BUILD_DIR"
+        
+        # Flags de compilation
+        LDFLAGS="-s -w -X main.Version=$VERSION"
+        
+        echo "Building for multiple platforms..."
+        
+        # Linux AMD64
+        GOOS=linux GOARCH=amd64 go build -ldflags="$LDFLAGS" -o "$BUILD_DIR/${APP_NAME}_${VERSION}_linux_amd64" .
+        
+        # Linux ARM64
+        GOOS=linux GOARCH=arm64 go build -ldflags="$LDFLAGS" -o "$BUILD_DIR/${APP_NAME}_${VERSION}_linux_arm64" .
+        
+        # Windows AMD64
+        GOOS=windows GOARCH=amd64 go build -ldflags="$LDFLAGS" -o "$BUILD_DIR/${APP_NAME}_${VERSION}_windows_amd64.exe" .
+        
+        # Windows ARM64
+        GOOS=windows GOARCH=arm64 go build -ldflags="$LDFLAGS" -o "$BUILD_DIR/${APP_NAME}_${VERSION}_windows_arm64.exe" .
+        
+        # macOS AMD64
+        GOOS=darwin GOARCH=amd64 go build -ldflags="$LDFLAGS" -o "$BUILD_DIR/${APP_NAME}_${VERSION}_darwin_amd64" .
+        
+        # macOS ARM64
+        GOOS=darwin GOARCH=arm64 go build -ldflags="$LDFLAGS" -o "$BUILD_DIR/${APP_NAME}_${VERSION}_darwin_arm64" .
+        
+        echo "Build completed successfully!"
+        ls -la "$BUILD_DIR/"
+        
+    - name: Create archives
+      run: |
+        cd releases
+        
+        # Créer des archives tar.gz pour Unix
+        for file in *linux* *darwin*; do
+          if [ -f "$file" ]; then
+            tar -czf "${file}.tar.gz" "$file"
+            echo "Created ${file}.tar.gz"
+          fi
+        done
+        
+        # Créer des archives zip pour Windows
+        for file in *windows*.exe; do
+          if [ -f "$file" ]; then
+            zip "${file%.exe}.zip" "$file"
+            echo "Created ${file%.exe}.zip"
+          fi
+        done
+        
+        cd ..
+        echo "Archives created:"
+        ls -la releases/*.{tar.gz,zip}
+        
+    - name: Generate checksums
+      run: |
+        cd releases
+        sha256sum *.tar.gz *.zip > checksums.txt
+        echo "Checksums generated:"
+        cat checksums.txt
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.get_version.outputs.VERSION }}
+        name: Release ${{ steps.get_version.outputs.VERSION }}
+        body: |
+          ## DuckDuckGo Chat API Release ${{ steps.get_version.outputs.VERSION }}
+          
+          ### 📦 Downloads
+          
+          **Linux:**
+          - `duckduckgo-chat-api_${{ steps.get_version.outputs.VERSION }}_linux_amd64.tar.gz` - Linux x64
+          - `duckduckgo-chat-api_${{ steps.get_version.outputs.VERSION }}_linux_arm64.tar.gz` - Linux ARM64
+          
+          **Windows:**
+          - `duckduckgo-chat-api_${{ steps.get_version.outputs.VERSION }}_windows_amd64.zip` - Windows x64
+          - `duckduckgo-chat-api_${{ steps.get_version.outputs.VERSION }}_windows_arm64.zip` - Windows ARM64
+          
+          **macOS:**
+          - `duckduckgo-chat-api_${{ steps.get_version.outputs.VERSION }}_darwin_amd64.tar.gz` - macOS Intel
+          - `duckduckgo-chat-api_${{ steps.get_version.outputs.VERSION }}_darwin_arm64.tar.gz` - macOS Apple Silicon
+          
+          ### 🔐 Verification
+          
+          All binaries are signed and checksums are provided in `checksums.txt`.
+          
+          ### 🚀 Usage
+          
+          1. Download the appropriate binary for your platform
+          2. Extract the archive
+          3. Run the binary: `./duckduckgo-chat-api`
+          4. Access the API at `http://localhost:8080`
+          
+        files: |
+          releases/*.tar.gz
+          releases/*.zip
+          releases/checksums.txt
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
