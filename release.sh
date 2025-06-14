@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script de build pour créer des releases multi-plateformes
+# Build script for creating multi-platform releases
 
 set -e
 
@@ -8,28 +8,28 @@ APP_NAME="duckduckgo-chat-api"
 VERSION=${1:-"v1.0.0"}
 BUILD_DIR="releases"
 
-echo "🦆 Construction de $APP_NAME $VERSION"
+echo "🦆 Building $APP_NAME $VERSION"
 echo "======================================"
 
-# Nettoyer le répertoire de build
+# Clean build directory
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
-# Vérifier Go
+# Check Go
 if ! command -v go &> /dev/null; then
-    echo "❌ Go n'est pas installé"
+    echo "❌ Go is not installed"
     exit 1
 fi
 
 echo "✅ Go $(go version | grep -oP 'go\d+\.\d+\.\d+')"
 
-# Installation des dépendances
-echo "📦 Installation des dépendances..."
+# Install dependencies
+echo "📦 Installing dependencies..."
 go mod tidy
 
-echo "🔨 Construction des binaires..."
+echo "🔨 Building binaries..."
 
-# Flags de compilation pour optimiser la taille
+# Compilation flags for size optimization
 LDFLAGS="-s -w -X main.Version=$VERSION"
 
 # Linux AMD64
@@ -57,18 +57,18 @@ echo "  📦 macOS ARM64..."
 GOOS=darwin GOARCH=arm64 go build -ldflags="$LDFLAGS" -o "$BUILD_DIR/${APP_NAME}_${VERSION}_darwin_arm64" .
 
 echo ""
-echo "✅ Construction terminée avec succès !"
+echo "✅ Build completed successfully!"
 echo ""
-echo "📁 Binaires créés:"
+echo "📁 Binaries created:"
 ls -la "$BUILD_DIR/"
 
-# Créer des archives
+# Create archives
 echo ""
-echo "📦 Création des archives..."
+echo "📦 Creating archives..."
 
 cd "$BUILD_DIR"
 
-# Archives pour les systèmes Unix (tar.gz)
+# Archives for Unix systems (tar.gz)
 for file in *linux* *darwin*; do
     if [ -f "$file" ]; then
         tar -czf "${file}.tar.gz" "$file"
@@ -76,20 +76,25 @@ for file in *linux* *darwin*; do
     fi
 done
 
-# Archives pour Windows (zip)
-for file in *windows*.exe; do
-    if [ -f "$file" ]; then
-        zip "${file%.exe}.zip" "$file"
-        echo "  ✅ ${file%.exe}.zip"
-    fi
-done
+# Archives for Windows (zip)
+if command -v zip &> /dev/null; then
+    for file in *windows*.exe; do
+        if [ -f "$file" ]; then
+            zip "${file%.exe}.zip" "$file"
+            echo "  ✅ ${file%.exe}.zip"
+        fi
+    done
+else
+    echo "  ⚠️  zip command not found, skipping Windows archives"
+    echo "  � Install zip: sudo apt install zip"
+fi
 
 cd ..
 
 echo ""
-echo "📋 Résumé des fichiers de release:"
-ls -la "$BUILD_DIR/"*.{tar.gz,zip} 2>/dev/null || echo "Aucune archive créée"
+echo "📋 Release files summary:"
+ls -la "$BUILD_DIR/"*.{tar.gz,zip} 2>/dev/null || echo "No archives created"
 
 echo ""
-echo "🏷️  Pour créer une release GitHub, utilisez:"
+echo "🏷️  To create a GitHub release, use:"
 echo "   gh release create $VERSION $BUILD_DIR/*.tar.gz $BUILD_DIR/*.zip --title \"Release $VERSION\" --notes \"Release $VERSION\""
