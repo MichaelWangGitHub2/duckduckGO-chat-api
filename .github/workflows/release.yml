@@ -11,6 +11,9 @@ on:
         required: true
         default: 'v1.0.0'
 
+permissions:
+  contents: write
+  
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
@@ -108,8 +111,25 @@ jobs:
         echo "Checksums generated:"
         cat checksums.txt
         
+    - name: Verify release files
+      run: |
+        echo "Verifying release files exist..."
+        ls -la releases/
+        if [ ! -f "releases/checksums.txt" ]; then
+          echo "❌ checksums.txt not found"
+          exit 1
+        fi
+        
+        # Vérifier qu'au moins un fichier archive existe
+        if ! ls releases/*.tar.gz releases/*.zip 1> /dev/null 2>&1; then
+          echo "❌ No archive files found"
+          exit 1
+        fi
+        
+        echo "✅ All release files verified"
+        
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.get_version.outputs.VERSION }}
         name: Release ${{ steps.get_version.outputs.VERSION }}
@@ -147,5 +167,7 @@ jobs:
           releases/checksums.txt
         draft: false
         prerelease: false
+        fail_on_unmatched_files: true
+        generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
