@@ -18,7 +18,7 @@ var (
 
 // Structures pour les requêtes/réponses API
 type ChatRequest struct {
-	Message   string `json:"message"`
+	Message   string `json:"message" binding:"required"`
 	Model     string `json:"model,omitempty"`
 	SessionID string `json:"session_id,omitempty"`
 }
@@ -159,16 +159,16 @@ func GetModels(c *gin.Context) {
 // Handler principal pour le chat (réponse complète)
 func ChatHandler(c *gin.Context) {
 	var req ChatRequest
-	/*
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, ErrorResponse{
-				Error:   fmt.Sprintf("Requête invalide: %v", err),
-				Code:    400,
-				Success: false,
-			})
-			return
-		}
-	*/
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error:   fmt.Sprintf("Requête invalide: %v", err),
+			Code:    400,
+			Success: false,
+		})
+		return
+	}
+
 	// Validation du modèle
 	model, err := validateModel(req.Model)
 	if err != nil {
