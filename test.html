@@ -327,7 +327,7 @@
             responseArea.textContent = 'Envoi du message...';
             
             try {
-                const response = await fetch(`${API_BASE}/chat`, {
+                const response = await fetch(`${API_BASE}/chat/completions`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

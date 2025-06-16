@@ -30,12 +30,12 @@ func main() {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}
-		
+
 		c.Next()
 	})
 
@@ -45,7 +45,7 @@ func main() {
 		// Routes essentielles du chat IA
 		api.GET("/health", HealthCheck)
 		api.GET("/models", GetModels)
-		api.POST("/chat", ChatHandler)
+		api.POST("/chat/completions", ChatHandler)
 		api.POST("/chat/stream", StreamChatHandler)
 		api.DELETE("/chat/clear", ClearChatHandler)
 	}
@@ -59,7 +59,7 @@ func main() {
 			"endpoints": gin.H{
 				"health":      "GET /api/v1/health",
 				"models":      "GET /api/v1/models",
-				"chat":        "POST /api/v1/chat",
+				"chat":        "POST /api/v1/chat/completions",
 				"chat_stream": "POST /api/v1/chat/stream",
 				"clear":       "DELETE /api/v1/chat/clear",
 			},
@@ -68,7 +68,7 @@ func main() {
 
 	log.Printf("🚀 DuckDuckGo Chat API démarrée sur le port %s", port)
 	log.Printf("📋 Documentation API disponible sur http://localhost:%s/", port)
-	
+
 	if err := router.Run(":" + port); err != nil {
 		log.Fatal("❌ Erreur de démarrage du serveur:", err)
 	}
