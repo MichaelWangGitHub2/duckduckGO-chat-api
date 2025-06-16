@@ -27,7 +27,7 @@ const (
 
 const (
 	StatusURL = "https://duckduckgo.com/duckchat/v1/status"
-	ChatURL   = "https://duckduckgo.com/duckchat/v1/chat/completions"
+	ChatURL   = "https://duckduckgo.com/duckchat/v1/chat"
 )
 
 // Structures pour l'API
