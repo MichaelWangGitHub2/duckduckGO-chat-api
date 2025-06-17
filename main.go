@@ -40,7 +40,7 @@ func main() {
 	})
 
 	// Routes de l'API
-	api := router.Group("/api/v1")
+	api := router.Group("/v1")
 	{
 		// Routes essentielles du chat IA
 		api.GET("/health", HealthCheck)
@@ -57,11 +57,11 @@ func main() {
 			"version":     "1.0.0",
 			"description": "API minimaliste pour DuckDuckGo Chat IA",
 			"endpoints": gin.H{
-				"health":      "GET /api/v1/health",
-				"models":      "GET /api/v1/models",
-				"chat":        "POST /api/v1/chat/completions",
-				"chat_stream": "POST /api/v1/chat/stream",
-				"clear":       "DELETE /api/v1/chat/clear",
+				"health":      "GET /v1/health",
+				"models":      "GET /v1/models",
+				"chat":        "POST /v1/chat/completions",
+				"chat_stream": "POST /v1/chat/stream",
+				"clear":       "DELETE /v1/chat/clear",
 			},
 		})
 	})

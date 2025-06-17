@@ -18,7 +18,7 @@ var (
 
 // Structures pour les requêtes/réponses API
 type ChatRequest struct {
-	Message   string `json:"message" binding:"required"`
+	Message   string `json:"message"`
 	Model     string `json:"model,omitempty"`
 	SessionID string `json:"session_id,omitempty"`
 }
