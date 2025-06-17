@@ -18,16 +18,17 @@ var (
 
 // Structures pour les requêtes/réponses API
 type ChatRequest struct {
-	Message   string `json:"message"`
-	Model     string `json:"model,omitempty"`
-	SessionID string `json:"session_id,omitempty"`
+	Messages  []Message `json:"messages" binding:"required"`
+	Model     string    `json:"model,omitempty"`
+	SessionID string    `json:"session_id,omitempty"`
 }
 
 type ChatResponse struct {
-	Message   string `json:"message"`
-	Model     string `json:"model"`
-	SessionID string `json:"session_id"`
-	Success   bool   `json:"success"`
+	Messages  string    `json:"messages"`
+	Model     string    `json:"model"`
+	SessionID string    `json:"session_id"`
+	Success   bool      `json:"success"`
+	Choices   []Choices `json:"choices"`
 }
 
 type StreamResponse struct {
@@ -48,6 +49,13 @@ type ErrorResponse struct {
 	Error   string `json:"error"`
 	Code    int    `json:"code"`
 	Success bool   `json:"success"`
+}
+
+// /////////additional///////
+type Choices struct {
+	Message      Message     `json:"message"`
+	Index        int         `json:"index"`
+	FinishReason interface{} `json:"finish_reason"`
 }
 
 // Fonction pour obtenir ou créer une session
@@ -162,7 +170,7 @@ func ChatHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:   fmt.Sprintf("Requête invalide: %v", err),
+			Error:   fmt.Sprintf("Requête invalide: %v \n %#v", err, req),
 			Code:    400,
 			Success: false,
 		})
@@ -192,7 +200,7 @@ func ChatHandler(c *gin.Context) {
 	}
 
 	// Envoyer le message
-	resp, err := session.SendMessage(req.Message)
+	resp, err := session.SendMessage(req.Messages[0].Content)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error:   fmt.Sprintf("Erreur de chat: %v", err),
@@ -214,10 +222,11 @@ func ChatHandler(c *gin.Context) {
 				goto done
 			}
 			completeResponse.WriteString(chunk)
+			//log.Printf("completeResponse: %#v", completeResponse)
 		case err := <-errChan:
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, ErrorResponse{
-					Error:   fmt.Sprintf("Erreur de stream: %v", err),
+					Error:   fmt.Sprintf("Erreur de stream: %v \n %#v", err, completeResponse),
 					Code:    500,
 					Success: false,
 				})
@@ -242,10 +251,19 @@ done:
 	}
 
 	c.JSON(http.StatusOK, ChatResponse{
-		Message:   completeResponse.String(),
+		Messages:  completeResponse.String(),
 		Model:     string(session.Model),
 		SessionID: sessionID,
-		Success:   true,
+		Choices: []Choices{
+			{
+				Index: 0,
+				Message: Message{
+					Content: completeResponse.String(),
+				},
+				FinishReason: nil,
+			},
+		},
+		Success: true,
 	})
 }
 
@@ -291,7 +309,7 @@ func StreamChatHandler(c *gin.Context) {
 	c.Header("Access-Control-Allow-Origin", "*")
 
 	// Envoyer le message
-	resp, err := session.SendMessage(req.Message)
+	resp, err := session.SendMessage(req.Messages[0].Content)
 	if err != nil {
 		streamResp := StreamResponse{
 			Done:      true,

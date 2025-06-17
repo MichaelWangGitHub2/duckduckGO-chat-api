@@ -32,8 +32,8 @@ const (
 
 // Structures pour l'API
 type Message struct {
-	Content string `json:"content"`
-	Role    string `json:"role"`
+	Content string `json:"content,omitempty"`
+	Role    string `json:"role,omitempty"`
 }
 
 type ToolChoice struct {
