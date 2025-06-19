@@ -164,6 +164,23 @@ func GetModels(c *gin.Context) {
 	})
 }
 
+func buildContent(Messages []Message) string {
+	var content strings.Builder
+	for _, apiMessage := range Messages {
+		role := apiMessage.Role
+		if role == "user" || role == "system" || role == "assistant" {
+			if role == "system" {
+				role = "user"
+			}
+			contentStr := ""
+			// 判断 apiMessage.Content 是否为数组
+			contentStr = apiMessage.Content
+			content.WriteString(role + ":" + contentStr + ";\r\n")
+		}
+	}
+	return content.String()
+}
+
 // Handler principal pour le chat (réponse complète)
 func ChatHandler(c *gin.Context) {
 	var req ChatRequest
@@ -200,7 +217,8 @@ func ChatHandler(c *gin.Context) {
 	}
 
 	// Envoyer le message
-	resp, err := session.SendMessage(req.Messages[0].Content)
+
+	resp, err := session.SendMessage(buildContent(req.Messages))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error:   fmt.Sprintf("Erreur de chat: %v", err),
@@ -309,7 +327,7 @@ func StreamChatHandler(c *gin.Context) {
 	c.Header("Access-Control-Allow-Origin", "*")
 
 	// Envoyer le message
-	resp, err := session.SendMessage(req.Messages[0].Content)
+	resp, err := session.SendMessage(buildContent(req.Messages))
 	if err != nil {
 		streamResp := StreamResponse{
 			Done:      true,
